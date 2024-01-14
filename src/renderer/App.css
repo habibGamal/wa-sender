@@ -1,0 +1,133 @@
+/*
+ * @NOTE: Prepend a `~` to css file paths that are in your node_modules
+ *        See https://github.com/webpack-contrib/sass-loader#imports
+ */
+body {
+  position: relative;
+  color: white;
+  height: 100vh;
+  background: #121212;
+  font-family: sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: start;
+}
+
+.isolate {
+  background: #222;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0px 0px 15px 5px rgba(0, 0, 0, 0.2);
+}
+
+button {
+  background-color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  appearance: none;
+  font-size: 1.3rem;
+  box-shadow:
+    0px 8px 28px -6px rgba(24, 39, 75, 0.12),
+    0px 18px 88px -4px rgba(24, 39, 75, 0.14);
+  transition: all ease-in 0.1s;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+button:hover {
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+li {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  height: fit-content;
+  width: fit-content;
+  margin: 10px;
+}
+
+a:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+.Hello {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.loglist {
+  max-height: 400px;
+  overflow-y: scroll;
+}
+:root {
+  --logo-size: 100px;
+  --logo-padding: 20px;
+}
+.logos-overlap {
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  width: 300px;
+  height: 300px;
+  position:relative;
+  margin: 0 auto;
+}
+
+.logo-wtsapp {
+  position: absolute;
+  left: 42%;
+  width: var(--logo-size);
+  aspect-ratio: 1;
+  padding: var(--logo-padding);
+  border-radius: 9999px;
+  margin: 50px auto 100px;
+  background: #2ab318;
+  overflow: hidden;
+}
+
+.logo {
+  z-index: 2;
+  position: absolute;
+  right: 42%;
+  width: var(--logo-size);
+  aspect-ratio: 1;
+  padding: var(--logo-padding);
+  background: #fcfcfc;
+  border-radius: 9999px;
+  margin: 50px auto 100px;
+}
+
+.logo-wtsapp img,
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+*::-webkit-scrollbar {
+  width: 16px;
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  height: 56px;
+  border-radius: 8px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+  background-color: #888;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
