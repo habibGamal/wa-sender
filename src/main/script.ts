@@ -21,44 +21,55 @@ export default async function sender(
     let countDone = 0;
     try {
       await driver.get('https://web.whatsapp.com');
+      // aria-label="Chat list"
       await driver.wait(
         until.elementLocated(
           By.xpath("//*[contains(text(), 'Search or start new chat')]"),
         ),
         10000000000,
       );
-      for (let i = 0; i < numbers.length; i++) {
-        if (numbers[i].toString().startsWith('01')) {
-          numbers[i] = `2${numbers[i]}`;
-        }
-        await driver.get(
-          `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
-        );
-        logs.push(
-          `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
-        );
+      await driver.manage().setTimeouts({ implicit: 30 * 1000 });
 
+      for (let i = 0; i < numbers.length; i++) {
         try {
+          if (numbers[i].toString().startsWith('01')) {
+            numbers[i] = `2${numbers[i]}`;
+          }
+          await driver.get(
+            `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
+          );
+          logs.push(
+            `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
+          );
+
+          // try {
+          //   await driver.findElement(
+          //     By.xpath(
+          //       "//*[contains(text(), 'Phone number shared via url is invalid.')]",
+          //     ),
+          //   );
+          //   logs.push(`number ${numbers[i]} is invalid`);
+          // } catch (e) {}
+          // try {
+          // await driver.wait(
+          //   until.elementLocated(By.css('span[data-icon="smiley"]')),
+          //   30 * 1000,
+          // );
           if (video) {
-            const attach = await driver.wait(
-              until.elementLocated(By.xpath("//div[@title='Attach']")),
-              1000000,
+            const attach = await driver.findElement(
+              By.xpath("//div[@title='Attach']"),
             );
             attach.click();
-            const uploadElement = await driver.wait(
-              until.elementLocated(
-                By.css(
-                  'input[accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
-                ),
+            const uploadElement = await driver.findElement(
+              By.css(
+                'input[accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
               ),
-              1000000,
             );
             await uploadElement.sendKeys(video);
             await driver.sleep(2000);
           }
-          const sendBtn = await driver.wait(
-            until.elementLocated(By.css('span[data-icon="send"]')),
-            1000000,
+          const sendBtn = await driver.findElement(
+            By.css('span[data-icon="send"]'),
           );
           await sendBtn.click();
           // const loading = await driver.wait(
@@ -72,7 +83,12 @@ export default async function sender(
 
           logs.push(`number ${numbers[i]} sent`);
           countDone += 1;
-        } catch (error) {
+          // } catch (error) {
+          //   logs.push(`number ${numbers[i]} is invalid`);
+          //   continue;
+          // }
+        } catch (e) {
+          logs.push(e?.message);
           logs.push(`number ${numbers[i]} is invalid`);
           continue;
         }
@@ -96,4 +112,3 @@ export default async function sender(
     return logs;
   }
 }
-
