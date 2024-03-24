@@ -11,6 +11,9 @@ import {
   Divider,
   List,
   Typography,
+  Row,
+  InputNumber,
+  Col,
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import XLSX from 'xlsx';
@@ -46,6 +49,9 @@ async function readExcelFile(file: Blob): Promise<string[]> {
 function Hello() {
   const [logs, setLogs] = React.useState<string[]>([]);
   const onFinish = async (values: any) => {
+    values.attachments = values.attachment?.fileList.map(
+      (file: any) => file.originFileObj.path,
+    );
     values.attachment = values.attachment?.fileList[0]?.originFileObj?.path;
     values.csv = values.csv?.fileList[0]?.originFileObj;
     if (values.csv) {
@@ -83,45 +89,73 @@ function Hello() {
           <img src={logoWhatsapp} alt="logo" />
         </div>
       </div>
-      <Form className="isolate" onFinish={onFinish}>
-        <Form.Item name="message">
-          <Input.TextArea placeholder="Message content" />
-        </Form.Item>
+      <Row gutter={16}>
+        <Col>
+          <Form className="isolate" onFinish={onFinish}
+            initialValues={{ startFrom: 0 }}
+          >
+            <Form.Item name="message">
+              <Input.TextArea placeholder="Message content" />
+            </Form.Item>
 
-        <Form.Item name="csv">
-          <Upload accept=".xlsx">
-            <Button size="large" icon={<UploadOutlined />}>
-              Upload CSV file
-            </Button>
-          </Upload>
-        </Form.Item>
+            <Form.Item name="csv">
+              <Upload accept=".xlsx">
+                <Button size="large" icon={<UploadOutlined />}>
+                  Upload CSV file
+                </Button>
+              </Upload>
+            </Form.Item>
 
-        <Form.Item name="attachment">
-          <Upload accept="image/*,video/*">
-            <Button size="large" icon={<UploadOutlined />}>
-              Upload Image/Video (Optional)
-            </Button>
-          </Upload>
-        </Form.Item>
+            <Form.Item name="attachment">
+              <Upload accept="image/*,video/*" multiple>
+                <Button size="large" icon={<UploadOutlined />}>
+                  Upload Image/Video (Optional)
+                </Button>
+              </Upload>
+            </Form.Item>
 
-        <Form.Item>
-          <Button size="large" type="primary" htmlType="submit">
-            Submit
-          </Button>
-        </Form.Item>
-      </Form>
-      <Divider />
-      <List
-        className="loglist"
-        header={<Typography.Text strong>Logs</Typography.Text>}
-        bordered
-        dataSource={logs}
-        renderItem={(item, index) => (
-          <List.Item>
-            <Typography.Text>[{index + 1}]</Typography.Text> {item}
-          </List.Item>
-        )}
-      />
+            <Form.Item name="startFrom" label="Start from">
+              <InputNumber min={0} />
+            </Form.Item>
+            <Form.Item>
+              <Button size="large" type="primary" htmlType="submit">
+                Submit
+              </Button>
+              <Button
+                onClick={() =>
+                  window.electron.ipcRenderer.sendMessage('stop-sender')
+                }
+                size="large"
+                danger
+                type="primary"
+                style={{ marginLeft: '1rem' }}
+              >
+                Stop
+              </Button>
+              <Button
+                onClick={() => window.electron.ipcRenderer.sendMessage('login')}
+                size="large"
+                style={{ marginLeft: '1rem' }}
+              >
+                Login
+              </Button>
+            </Form.Item>
+          </Form>
+        </Col>
+        <Col>
+          <List
+            className="loglist"
+            header={<Typography.Text strong>Logs</Typography.Text>}
+            bordered
+            dataSource={logs}
+            renderItem={(item, index) => (
+              <List.Item>
+                <Typography.Text>[{index + 1}]</Typography.Text> {item}
+              </List.Item>
+            )}
+          />
+        </Col>
+      </Row>
     </ConfigProvider>
   );
 }

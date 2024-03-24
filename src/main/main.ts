@@ -14,7 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import sender from './script';
+import sender, { login, stopSender } from './script';
 
 class AppUpdater {
   constructor() {
@@ -34,12 +34,18 @@ ipcMain.on('ipc-example', async (event, arg) => {
 
 ipcMain.on('form-submission', async (event, arg) => {
   const numberList = arg.csv ? JSON.parse(arg.csv) : [];
-  const sanitizedNumberList = numberList.map((number: string) =>
-    number.replaceAll(' ', '').replace('+', ''),
-  );
-  const logs = await sender(sanitizedNumberList, arg.message, arg.attachment);
-  console.log('arg', arg);
-  event.reply('form-submission', JSON.stringify(logs));
+  const logs = await sender(event, numberList,arg.startFrom, arg.message, arg.attachments);
+  // event.reply('form-submission', JSON.stringify(logs));
+});
+
+ipcMain.on('stop-sender', async (event) => {
+  await stopSender();
+});
+
+
+
+ipcMain.on('login', async (event) => {
+  login();
 });
 
 if (process.env.NODE_ENV === 'production') {

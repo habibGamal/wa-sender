@@ -66,6 +66,7 @@ a:hover {
 .loglist {
   max-height: 400px;
   overflow-y: scroll;
+  min-width: 500px;
 }
 :root {
   --logo-size: 100px;

@@ -1,114 +1,251 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
-import { Builder, Browser, By, until } from 'selenium-webdriver';
-import { ServiceBuilder } from 'selenium-webdriver/chrome';
+import { Builder, Browser, By, until, WebDriver } from 'selenium-webdriver';
+import { ServiceBuilder, Options } from 'selenium-webdriver/chrome';
+import fs from 'fs';
+
 const chromedriverPath = require('chromedriver').path.replace(
   'app.asar',
   'app.asar.unpacked',
 );
-const serviceBuilder = new ServiceBuilder(chromedriverPath);
+const profilePath =
+  '--user-data-dir=C:\\Users\\habib\\AppData\\Local\\Google\\Chrome\\roby7';
+
+let logs: string[] = [];
+const eventLog = (event: Electron.IpcMainEvent) =>
+  function logMessage(msg: string) {
+    if (
+      logs.length > 0 &&
+      logs[logs.length - 1].startsWith('Progress:') &&
+      msg.startsWith('Progress:')
+    ) {
+      logs[logs.length - 1] = msg;
+    } else logs.push(msg);
+    event.reply('form-submission', JSON.stringify(logs));
+  };
+
+const eventProgress = (event: Electron.IpcMainEvent) =>
+  function logMessage(msg: string) {
+    event.reply('form-submission', JSON.stringify([...logs, msg]));
+  };
+let driver: WebDriver;
+
+export async function stopSender() {
+  if (driver) {
+    await driver.close();
+  }
+}
+
+export async function login() {
+  const serviceBuilder = new ServiceBuilder(chromedriverPath);
+  const options = new Options();
+  options.addArguments(profilePath);
+  const driver = await new Builder()
+    .forBrowser(Browser.CHROME)
+    .setChromeService(serviceBuilder)
+    .setChromeOptions(options)
+    .build();
+  await driver.get('https://web.whatsapp.com');
+  await driver.sleep(50000000);
+}
+
 export default async function sender(
+  event: Electron.IpcMainEvent,
   numbers: string[],
+  startFrom: number,
   message: string,
-  video?: string,
+  videos?: string[],
 ) {
-  const logs = [];
+  logs = [];
+  const logMessage = eventLog(event);
+  const logProgress = eventProgress(event);
+  const refinedNumbers = refineNumbers(numbers);
   try {
-    const driver = await new Builder()
+    const serviceBuilder = new ServiceBuilder(chromedriverPath);
+    const options = new Options();
+    options.addArguments(profilePath);
+    // options.addArguments('--headless=new');
+    driver = await new Builder()
       .forBrowser(Browser.CHROME)
       .setChromeService(serviceBuilder)
+      .setChromeOptions(options)
       .build();
-    let countDone = 0;
     try {
+      logMessage('Starting...');
+      logMessage('Refined Numbers: ' + refinedNumbers.length);
       await driver.get('https://web.whatsapp.com');
-      // aria-label="Chat list"
-      await driver.wait(
-        until.elementLocated(
-          By.xpath("//*[contains(text(), 'Search or start new chat')]"),
-        ),
-        10000000000,
-      );
-      await driver.manage().setTimeouts({ implicit: 30 * 1000 });
-
-      for (let i = 0; i < numbers.length; i++) {
+      await waitForAppLoading(driver);
+      // await driver.sleep(5000000);
+      const isAuthorized = await checkAuth(driver);
+      if (!isAuthorized) {
+        logMessage('Not authorized: please login first');
+        return;
+      }
+      logMessage('You are authorized successfully');
+      logMessage('Loading Chats');
+      await waitForChatScreen(driver);
+      logMessage('Chats loaded Successfully');
+      for (let i = startFrom; i < refinedNumbers.length; i++) {
         try {
-          if (numbers[i].toString().startsWith('01')) {
-            numbers[i] = `2${numbers[i]}`;
+          console.log('send to ', refinedNumbers[i]);
+          await sendTo(driver, logMessage, refinedNumbers[i], message, videos);
+          logMessage(`Progress: Done ${i + 1} of ${refinedNumbers.length}`);
+        } catch (error: any) {
+          // handle NoSuchSessionError
+          if (
+            error?.message.includes(
+              'This driver instance does not have a valid session ID',
+            ) || error?.message.includes('invalid session id')
+          ) {
+            logMessage('Session Expired');
+            break;
           }
-          await driver.get(
-            `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
-          );
-          logs.push(
-            `https://web.whatsapp.com/send/?phone=${numbers[i]}&text=${message}`,
-          );
-
-          // try {
-          //   await driver.findElement(
-          //     By.xpath(
-          //       "//*[contains(text(), 'Phone number shared via url is invalid.')]",
-          //     ),
-          //   );
-          //   logs.push(`number ${numbers[i]} is invalid`);
-          // } catch (e) {}
-          // try {
-          // await driver.wait(
-          //   until.elementLocated(By.css('span[data-icon="smiley"]')),
-          //   30 * 1000,
-          // );
-          if (video) {
-            const attach = await driver.findElement(
-              By.xpath("//div[@title='Attach']"),
-            );
-            attach.click();
-            const uploadElement = await driver.findElement(
-              By.css(
-                'input[accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
-              ),
-            );
-            await uploadElement.sendKeys(video);
-            await driver.sleep(2000);
-          }
-          const sendBtn = await driver.findElement(
-            By.css('span[data-icon="send"]'),
-          );
-          await sendBtn.click();
-          // const loading = await driver.wait(
-          //   until.elementLocated(By.css('span[data-icon="msg-time"]')),
-          //   1000000,
-          // );
-          // wait for loading element to disappear
-          // await driver.wait(until.stalenessOf(loading), 1000000);
-
-          await driver.sleep(10000);
-
-          logs.push(`number ${numbers[i]} sent`);
-          countDone += 1;
-          // } catch (error) {
-          //   logs.push(`number ${numbers[i]} is invalid`);
-          //   continue;
-          // }
-        } catch (e) {
-          logs.push(e?.message);
-          logs.push(`number ${numbers[i]} is invalid`);
-          continue;
+          logMessage(error?.message);
+          console.log(error);
         }
       }
     } catch (error: any) {
-      const errMsg = error?.messaage || 'unexpected error occured';
-      logs.push(errMsg);
-      logs.push(error?.toString());
-      logs.push(`sent ${countDone} messages from ${numbers.length}`);
-      logs.push(`failed to send ${numbers.length - countDone} messages`);
-      await driver.quit();
-      return logs;
+      console.log('error', error);
+      logMessage(error?.message);
     } finally {
-      await driver.quit();
-      logs.push(`sent ${countDone} messages from ${numbers.length}`);
-      logs.push(`failed to send ${numbers.length - countDone} messages`);
-      return logs;
+      logMessage('Finished');
+      driver.quit();
     }
-  } catch (e) {
-    logs.push(e?.message);
-    return logs;
+  } catch (e: any) {
+    console.log('error', e);
+    logMessage(e?.message);
   }
+}
+const TIMEOUT = 30 * 1000;
+async function sendTo(
+  driver: WebDriver,
+  logMessage: (msg: string) => void,
+  number: string,
+  message: string,
+  videos?: string[],
+) {
+  await driver.get(
+    `https://web.whatsapp.com/send/?phone=${number}&text=${message}`,
+  );
+  console.log('loading page');
+  await waitForChatLoading(driver);
+  console.log('app loaded');
+  const isNumberValid = await isValidNumber(driver);
+  console.log('validate number');
+  if (isNumberValid === false) {
+    logMessage(`Invalid Number: ${number}`);
+    return;
+  }
+  console.log('number is valid');
+  await sendJustText(driver);
+
+  if (videos) {
+    for (const video of videos) {
+      await sendAttatchment(driver, video);
+    }
+  }
+}
+async function sendAttatchment(driver: WebDriver, attachment: string) {
+  const attach = await driver.wait(
+    until.elementLocated(By.css('div[title="Attach"]')),
+    TIMEOUT,
+  );
+  await attach.click();
+  console.log('upload element');
+  const uploadElement = await driver.wait(
+    until.elementLocated(
+      By.css('input[accept="image/*,video/mp4,video/3gpp,video/quicktime"]'),
+    ),
+    TIMEOUT,
+  );
+  console.log('upload element send key');
+  await uploadElement.sendKeys(attachment);
+  await sendWithAttachment(driver);
+}
+
+async function isValidNumber(driver: WebDriver) {
+  try {
+    await driver.wait(
+      until.elementLocated(By.css('div[title="Attach"]')),
+      2000,
+    );
+    return true;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+}
+
+async function waitMsgToBeSent(driver: WebDriver) {
+  const msgLoader = await driver.wait(
+    until.elementLocated(By.css('span[data-icon="msg-time"]')),
+    TIMEOUT,
+  );
+  await driver.wait(until.stalenessOf(msgLoader), TIMEOUT);
+}
+
+async function sendWithAttachment(driver: WebDriver) {
+  const sendBtn = await driver.wait(
+    until.elementLocated(By.css('div[role="button"] span[data-icon="send"]')),
+    TIMEOUT,
+  );
+  await sendBtn.click();
+  await waitMsgToBeSent(driver);
+}
+
+async function sendJustText(driver: WebDriver) {
+  const sendBtn = await driver.wait(
+    until.elementLocated(By.css('span[data-icon="send"]')),
+    TIMEOUT,
+  );
+  await sendBtn.click();
+  await waitMsgToBeSent(driver);
+}
+
+function refineNumbers(numbers: string[]) {
+  const list = numbers.map((number: string) => {
+    let refindedNumber = number.toString().replaceAll(' ', '').replace('+', '');
+    if (refindedNumber.startsWith('01')) {
+      refindedNumber = `2${refindedNumber}`;
+    }
+    return refindedNumber;
+  });
+  // remove duplicates
+  return [...new Set(list)];
+}
+
+async function checkAuth(driver: WebDriver) {
+  try {
+    await driver.findElement(By.css('div[id="initial_startup"]'));
+    return false;
+  } catch (e) {
+    return true;
+  }
+}
+
+async function waitForAppLoading(driver: WebDriver) {
+  await driver.wait(until.elementLocated(By.css('div[id="app"]')), TIMEOUT);
+}
+
+async function waitForChatLoading(driver: WebDriver) {
+  try {
+    await driver.switchTo().alert().accept();
+  } catch (e) {
+    console.log(e);
+  }
+  const starting = await driver.wait(
+    until.elementLocated(By.xpath('//*[text()="Starting chat"]')),
+    TIMEOUT,
+  );
+  await driver.wait(until.stalenessOf(starting), TIMEOUT);
+}
+
+async function waitForChatScreen(driver: WebDriver) {
+  await driver.wait(
+    until.elementLocated(
+      // button aria-label="Search or start new chat"
+      By.css('button[aria-label="Search or start new chat"]'),
+    ),
+    TIMEOUT,
+  );
 }
