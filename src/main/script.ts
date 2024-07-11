@@ -3,13 +3,15 @@
 import { Builder, Browser, By, until, WebDriver } from 'selenium-webdriver';
 import { ServiceBuilder, Options } from 'selenium-webdriver/chrome';
 import fs from 'fs';
+import updateChromeDriver from './updateChromeDriver';
 
 const chromedriverPath = require('chromedriver').path.replace(
   'app.asar',
   'app.asar.unpacked',
 );
+// const chromedriverPath = 'C:\\chromedriver\\chromedriver-win64\\chromedriver.exe'
 const profilePath =
-  '--user-data-dir=C:\\Users\\habib\\AppData\\Local\\Google\\Chrome\\roby7';
+  '--user-data-dir=C:\\Users\\habib\\AppData\\Local\\Google\\Chrome\\roby8';
 
 let logs: string[] = [];
 const eventLog = (event: Electron.IpcMainEvent) =>
@@ -28,6 +30,7 @@ const eventProgress = (event: Electron.IpcMainEvent) =>
   function logMessage(msg: string) {
     event.reply('form-submission', JSON.stringify([...logs, msg]));
   };
+
 let driver: WebDriver;
 
 export async function stopSender() {
@@ -37,16 +40,20 @@ export async function stopSender() {
 }
 
 export async function login() {
-  const serviceBuilder = new ServiceBuilder(chromedriverPath);
-  const options = new Options();
-  options.addArguments(profilePath);
-  const driver = await new Builder()
-    .forBrowser(Browser.CHROME)
-    .setChromeService(serviceBuilder)
-    .setChromeOptions(options)
-    .build();
-  await driver.get('https://web.whatsapp.com');
-  await driver.sleep(50000000);
+  try {
+    const serviceBuilder = new ServiceBuilder(chromedriverPath);
+    const options = new Options();
+    options.addArguments(profilePath);
+    const driver = await new Builder()
+      .forBrowser(Browser.CHROME)
+      .setChromeService(serviceBuilder)
+      .setChromeOptions(options)
+      .build();
+    await driver.get('https://web.whatsapp.com');
+    await driver.sleep(50000000);
+  } catch (e: any) {
+    updateChromeDriver(e.message);
+  }
 }
 
 export default async function sender(
@@ -95,7 +102,8 @@ export default async function sender(
           if (
             error?.message.includes(
               'This driver instance does not have a valid session ID',
-            ) || error?.message.includes('invalid session id')
+            ) ||
+            error?.message.includes('invalid session id')
           ) {
             logMessage('Session Expired');
             break;
