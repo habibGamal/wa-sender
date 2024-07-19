@@ -5,11 +5,11 @@ import { ServiceBuilder, Options } from 'selenium-webdriver/chrome';
 import fs from 'fs';
 import updateChromeDriver from './updateChromeDriver';
 
-const chromedriverPath = require('chromedriver').path.replace(
-  'app.asar',
-  'app.asar.unpacked',
-);
-// const chromedriverPath = 'C:\\chromedriver\\chromedriver-win64\\chromedriver.exe'
+// const chromedriverPath = require('chromedriver').path.replace(
+//   'app.asar',
+//   'app.asar.unpacked',
+// );
+const chromedriverPath = 'C:\\chromedriver\\chromedriver-win64\\chromedriver.exe'
 const profilePath =
   '--user-data-dir=C:\\Users\\habib\\AppData\\Local\\Google\\Chrome\\roby8';
 
@@ -34,6 +34,7 @@ const eventProgress = (event: Electron.IpcMainEvent) =>
 let driver: WebDriver;
 
 export async function stopSender() {
+  console.log('stopping',driver)
   if (driver) {
     await driver.close();
   }
